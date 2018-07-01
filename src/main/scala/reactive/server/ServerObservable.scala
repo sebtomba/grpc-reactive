@@ -1,9 +1,9 @@
 package reactive.server
 
-import scala.concurrent.Future
-
 import io.grpc.ServerBuilder
+import io.grpc.stub.StreamObserver
 import monix.execution.Cancelable
+import monix.execution.Ack.Stop
 import monix.reactive.Observable
 import monix.reactive.observers.{BufferedSubscriber, Subscriber}
 import monix.reactive.OverflowStrategy.DropNewAndSignal
@@ -18,8 +18,23 @@ class ServerObservable(port: Int, bufferSize: Int) extends Observable[ServerMess
     val out = BufferedSubscriber[ServerMessage](subscriber, DropNewAndSignal(bufferSize, overflowMessage))
 
     val service = new ReactiveServiceGrpc.ReactiveService {
-      def send(request: ClientMessage): Future[ServerReply] =
-        out.onNext(Sequence(request.sequence)).map(_ => ServerReply(request.sequence))(out.scheduler)
+
+      def send(responseObserver: StreamObserver[ServerReply]): StreamObserver[ClientMessage] =
+        new StreamObserver[ClientMessage] {
+
+          def onNext(value: ClientMessage): Unit = {
+            if (out.onNext(Sequence(value.sequence)) == Stop)
+              responseObserver.onCompleted()
+            else responseObserver.onNext(ServerReply(value.sequence))
+          }
+
+          // Downstream consumer doesn't care about upstream errors
+          // TODO: Log the error
+          def onError(t: Throwable): Unit = ()
+
+          // Don't shutdown the server, not calling downstream onCompleted()
+          def onCompleted(): Unit = responseObserver.onCompleted()
+        }
     }
 
     val server = ServerBuilder

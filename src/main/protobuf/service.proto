@@ -3,7 +3,7 @@ syntax = "proto3";
 package reactive;
 
 service ReactiveService {
-  rpc send (ClientMessage) returns (ServerReply);
+  rpc send (stream ClientMessage) returns (stream ServerReply);
 }
 
 message ClientMessage {
