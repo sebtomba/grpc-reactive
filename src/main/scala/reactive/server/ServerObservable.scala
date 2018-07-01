@@ -6,16 +6,13 @@ import io.grpc.ServerBuilder
 import monix.execution.Cancelable
 import monix.reactive.Observable
 import monix.reactive.observers.{BufferedSubscriber, Subscriber}
-import monix.reactive.OverflowStrategy.DropNewAndSignal
+import monix.reactive.OverflowStrategy.BackPressure
 import reactive.service._
 
 class ServerObservable(port: Int, bufferSize: Int) extends Observable[ServerMessage] {
 
-  private def overflowMessage(count: Long): Option[ServerMessage] =
-    Some(Overflow(count))
-
   def unsafeSubscribeFn(subscriber: Subscriber[ServerMessage]): Cancelable = {
-    val out = BufferedSubscriber[ServerMessage](subscriber, DropNewAndSignal(bufferSize, overflowMessage))
+    val out = BufferedSubscriber[ServerMessage](subscriber, BackPressure(bufferSize))
 
     val service = new ReactiveServiceGrpc.ReactiveService {
       def send(request: ClientMessage): Future[ServerReply] =
