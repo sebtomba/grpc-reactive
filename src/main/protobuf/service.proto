@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package reactive;
+
+service ReactiveService {
+  rpc send (ClientMessage) returns (ServerReply);
+}
+
+message ClientMessage {
+  uint64 sequence = 1;
+}
+
+message ServerReply {
+  uint64 sequence = 1;
+}
