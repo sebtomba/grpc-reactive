@@ -3,13 +3,19 @@ syntax = "proto3";
 package reactive;
 
 service ReactiveService {
-  rpc send (ClientMessage) returns (ServerReply);
+  rpc tell (ServiceMessage) returns (TellReply);
+  rpc ask (ServiceMessage) returns (AskReply);
 }
 
-message ClientMessage {
+message ServiceMessage {
   uint64 sequence = 1;
 }
 
-message ServerReply {
+message TellReply {
   uint64 sequence = 1;
+}
+
+message AskReply {
+  uint64 sequence = 1;
+  string response = 2;
 }

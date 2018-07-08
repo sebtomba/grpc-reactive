@@ -20,8 +20,16 @@ object Client {
     val task = Observable.intervalAtFixedRate(10.milliseconds)
       .drop(1)
       .take(1000)
-      .mapParallelUnordered(10)(i => Task.fromFuture(server.send(ClientMessage(i))))
-      .mapTask(r => log.info(s"Response: ${r.sequence}"))
+      .mapParallelUnordered(10) { i =>
+        if(i % 100 == 0)
+          Task.fromFuture(server.ask(ServiceMessage(i)))
+        else
+          Task.fromFuture(server.tell(ServiceMessage(i)))
+      }
+      .mapTask {
+        case TellReply(seq) => log.info(s"Response: $seq")
+        case AskReply(seq, response) => log.info(s"Ask Response: $seq / $response")
+      }
       .consumeWith(Consumer.complete)
       .doOnFinish(_ => Task.delay(channel.shutdown()))
       .runAsync(monix.execution.Scheduler.io("producer"))
